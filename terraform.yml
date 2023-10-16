@@ -1,7 +1,7 @@
 - hosts: localhost
   tasks:
   - ansible.builtin.yum:
-    name: unzip
+      name: unzip
       state: present
 
   - name: Download terraform cli
