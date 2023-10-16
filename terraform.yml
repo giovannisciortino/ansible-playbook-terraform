@@ -1,5 +1,9 @@
 - hosts: localhost
   tasks:
+  - ansible.builtin.yum:
+    name: unzip
+    state: present
+
   - name: Download terraform cli
     ansible.builtin.get_url:
       url: https://releases.hashicorp.com/terraform/1.6.1/terraform_1.6.1_linux_amd64.zip
