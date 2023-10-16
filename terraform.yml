@@ -6,9 +6,9 @@
       dest: /tmp/terraform.zip
       mode: '0666' 
 
-   - name: Extract terraform.zip into /tmp/terraform_cli
-     ansible.builtin.unarchive:
-       src: /tmp/terraform.zip
-       dest: /tmp/terraform_cli
+  - name: Extract terraform.zip into /tmp/terraform_cli
+    ansible.builtin.unarchive:
+      src: /tmp/terraform.zip
+      dest: /tmp/terraform_cli
 
-   - shell: /tmp/terraform_cli/terraform
+  - shell: /tmp/terraform_cli/terraform
