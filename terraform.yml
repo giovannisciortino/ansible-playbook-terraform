@@ -6,6 +6,11 @@
       dest: /tmp/terraform.zip
       mode: '0666' 
 
+  - name: Creates directory
+    file:
+      path: /tmp/terraform_cli
+      state: directory
+
   - name: Extract terraform.zip into /tmp/terraform_cli
     ansible.builtin.unarchive:
       src: /tmp/terraform.zip
