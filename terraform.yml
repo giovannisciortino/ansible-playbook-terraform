@@ -3,7 +3,7 @@
   - ansible.builtin.yum:
       name: unzip
       state: present
-      became: true
+    become: true
 
   - name: Download terraform cli
     ansible.builtin.get_url:
