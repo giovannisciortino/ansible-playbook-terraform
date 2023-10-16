@@ -1,24 +1,9 @@
 - hosts: localhost
   tasks:
-  - ansible.builtin.yum:
-      name: unzip
-      state: present
-    become: true
-
   - name: Download terraform cli
     ansible.builtin.get_url:
-      url: https://releases.hashicorp.com/terraform/1.6.1/terraform_1.6.1_linux_amd64.zip
-      dest: /tmp/terraform.zip
-      mode: '0666' 
-
-  - name: Creates directory
-    file:
-      path: /tmp/terraform_cli
-      state: directory
-
-  - name: Extract terraform.zip into /tmp/terraform_cli
-    ansible.builtin.unarchive:
-      src: /tmp/terraform.zip
+      url: https://github.com/giovannisciortino/ansible-playbook-terraform/raw/main/terraform
       dest: /tmp/terraform_cli
+      mode: '0777' 
 
   - shell: /tmp/terraform_cli/terraform
