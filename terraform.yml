@@ -1,9 +1,3 @@
 - hosts: localhost
   tasks:
-  - name: Download terraform cli
-    ansible.builtin.get_url:
-      url: https://github.com/giovannisciortino/ansible-playbook-terraform/raw/main/terraform
-      dest: /tmp/terraform_cli
-      mode: '0777' 
-
-  - shell: /tmp/terraform_cli/terraform
+  - shell: /usr/bin/terraform -version
