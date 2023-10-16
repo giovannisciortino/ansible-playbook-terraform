@@ -2,7 +2,7 @@
   tasks:
   - ansible.builtin.yum:
     name: unzip
-    state: present
+      state: present
 
   - name: Download terraform cli
     ansible.builtin.get_url:
