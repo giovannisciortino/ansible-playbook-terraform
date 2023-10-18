@@ -43,7 +43,7 @@
       terraform_variables: "{{ service_file_content | ansible.builtin.combine(service_account_dict) }}"
 
   - name: Basic deploy of a GCP instance and a vpc network
-    community.general.terraform:
+    cloud.terraform.terraform:
       project_path: '{{tmp_directory.path}}/terraform-template-gcp-vm'
       state: present
       force_init: true
