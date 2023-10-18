@@ -1,0 +1,55 @@
+- hosts: localhost
+  gather_facts: off
+  tasks:
+  - fail: 
+      msg: "Ansible variable named 'service_file_path' not defined"
+    when: service_file_path is not defined
+
+  - fail: 
+      msg: "Environemnt variable(GCE Credential) GCE_CREDENTIALS_FILE_PATH not defined"
+    when: lookup('ansible.builtin.env', 'GCE_CREDENTIALS_FILE_PATH') == ''
+
+  - name: Create temporary directory
+    ansible.builtin.tempfile:
+      state: directory
+      prefix: git_clone_dir
+    register: tmp_directory
+
+  - name: Clone terraform-template-gcp-vm github repository
+    git:
+      repo: https://github.com/giovannisciortino/terraform-template-gcp-vm.git
+      dest: "{{tmp_directory.path}}/terraform-template-gcp-vm"
+      clone: yes
+      update: yes
+
+  - name: Clone terraform-gcp-vm-service-definition github repository
+    git:
+      repo: https://github.com/giovannisciortino/terraform-gcp-vm-service-definition.git
+      dest: "{{tmp_directory.path}}/terraform-gcp-vm-service-definition"
+      clone: yes
+      update: yes
+
+  - name: Read service definition json file
+    set_fact:
+      service_file_content: "{{ lookup('ansible.builtin.file', '{{tmp_directory.path}}/terraform-gcp-vm-service-definition/{{service_file_path}}' ) }}"   
+
+  - name: Define GCP Service account terraform variable
+    set_fact:
+      service_account_dict:
+        gcp_service_account_json_file: "{{ lookup('ansible.builtin.env', 'GCE_CREDENTIALS_FILE_PATH') }}"
+
+  - name: Define Terraform variables dictionary
+    set_fact:
+      terraform_variables: "{{ service_file_content | ansible.builtin.combine(service_account_dict) }}"
+
+  - name: Basic deploy of a GCP instance and a vpc network
+    community.general.terraform:
+      project_path: '{{tmp_directory.path}}/terraform-template-gcp-vm'
+      state: present
+      force_init: true
+      backend_config:
+        credentials: "{{ lookup('ansible.builtin.env', 'GCE_CREDENTIALS_FILE_PATH') }}"
+        bucket: "{{ service_file_content.gcp_project }}-tf-state"
+        prefix: "terraform/state/{{service_file_path}}"
+      variables: "{{ terraform_variables }}"
+
