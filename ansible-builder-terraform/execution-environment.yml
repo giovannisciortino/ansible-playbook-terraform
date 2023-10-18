@@ -1,0 +1,10 @@
+---
+version: 1
+build_arg_defaults:
+  EE_BASE_IMAGE: 'registry.redhat.io/ansible-automation-platform-24/ee-minimal-rhel8:1.0.0-441'
+dependencies:
+  galaxy: requirements.yml
+additional_build_steps:
+  append:
+    - COPY ../terraform /usr/bin/
+

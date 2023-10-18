@@ -8,7 +8,7 @@
   - fail: 
       msg: "Environemnt variable(GCE Credential) GCE_CREDENTIALS_FILE_PATH not defined"
     when: lookup('ansible.builtin.env', 'GCE_CREDENTIALS_FILE_PATH') == ''
-
+ 
   - name: Create temporary directory
     ansible.builtin.tempfile:
       state: directory

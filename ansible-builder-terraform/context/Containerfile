@@ -1,0 +1,47 @@
+ARG EE_BASE_IMAGE="registry.redhat.io/ansible-automation-platform-24/ee-minimal-rhel8:1.0.0-441"
+ARG EE_BUILDER_IMAGE="quay.io/ansible/ansible-builder:latest"
+ARG PYCMD="/usr/bin/python3"
+ARG PKGMGR_PRESERVE_CACHE=""
+ARG ANSIBLE_GALAXY_CLI_COLLECTION_OPTS=""
+ARG ANSIBLE_GALAXY_CLI_ROLE_OPTS=""
+
+# Base build stage
+FROM $EE_BASE_IMAGE as base
+USER root
+ARG EE_BASE_IMAGE
+ARG EE_BUILDER_IMAGE
+ARG PYCMD
+ARG PKGMGR_PRESERVE_CACHE
+ARG ANSIBLE_GALAXY_CLI_COLLECTION_OPTS
+ARG ANSIBLE_GALAXY_CLI_ROLE_OPTS
+
+RUN $PYCMD -m ensurepip
+COPY _build/scripts/ /output/scripts/
+COPY _build/scripts/entrypoint /opt/builder/bin/entrypoint
+
+# Builder build stage
+FROM base as builder
+WORKDIR /build
+ARG EE_BASE_IMAGE
+ARG EE_BUILDER_IMAGE
+ARG PYCMD
+ARG PKGMGR_PRESERVE_CACHE
+ARG ANSIBLE_GALAXY_CLI_COLLECTION_OPTS
+ARG ANSIBLE_GALAXY_CLI_ROLE_OPTS
+
+RUN $PYCMD -m pip install --no-cache-dir bindep pyyaml requirements-parser
+
+# Final build stage
+FROM base as final
+ARG EE_BASE_IMAGE
+ARG EE_BUILDER_IMAGE
+ARG PYCMD
+ARG PKGMGR_PRESERVE_CACHE
+ARG ANSIBLE_GALAXY_CLI_COLLECTION_OPTS
+ARG ANSIBLE_GALAXY_CLI_ROLE_OPTS
+
+COPY --from=builder /output/ /output/
+RUN /output/scripts/install-from-bindep && rm -rf /output/wheels
+COPY ../terraform /usr/bin/
+RUN rm -rf /output
+LABEL ansible-execution-environment=true
