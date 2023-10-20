@@ -14,6 +14,7 @@
       state: directory
       prefix: git_clone_dir
     register: tmp_directory
+    changed_when: false
 
   - name: Clone terraform-template-gcp-vm github repository
     git:
@@ -21,6 +22,7 @@
       dest: "{{tmp_directory.path}}/terraform-template-gcp-vm"
       clone: yes
       update: yes
+    changed_when: false
 
   - name: Clone terraform-gcp-vm-service-definition github repository
     git:
@@ -28,6 +30,7 @@
       dest: "{{tmp_directory.path}}/terraform-gcp-vm-service-definition"
       clone: yes
       update: yes
+    changed_when: false
 
   - name: Read service definition json file
     set_fact:
@@ -92,6 +95,7 @@
       project: '{{ service_file_content.gcp_project }}'
       auth_kind: serviceaccount
       service_account_file: "{{ lookup('ansible.builtin.env', 'GCE_CREDENTIALS_FILE_PATH') }}" 
+    changed_when: false
 
   - name: List outputs from terraform.tfstate in project_dir
     cloud.terraform.terraform_output:
@@ -113,12 +117,14 @@
     loop: "{{terraform_output.outputs.vm_instance_name.value}}"
     loop_control:
       index_var: my_idx
+    changed_when: false
 
   - name: Creating the ssh private key file
     copy:
       dest: "{{ tmp_directory.path }}/ssh_private_key"
       content: "{{ terraform_output.outputs.private_key.value }}"
       mode: 0400
+    changed_when: false
 
 - name: "Example of postconfig"
   hosts: "{{service_file_path}}" 
