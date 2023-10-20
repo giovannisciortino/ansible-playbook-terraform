@@ -130,8 +130,9 @@
       wait_for:
         host: "{{ ansible_ssh_host }}" 
         port: 22 
-        delay: 10  
-        timeout: 300
+      retries: 60
+      delay: 10
+
     - name: Install httpd
       dnf:
         name: httpd
