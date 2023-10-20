@@ -37,12 +37,44 @@
     set_fact:
       service_account_dict:
         gcp_service_account_json_file: "{{ lookup('ansible.builtin.env', 'GCE_CREDENTIALS_FILE_PATH') }}"
+        gcp_compute_instance_tag_service_name: "{{ service_file_path | basename }}"
 
   - name: Define Terraform variables dictionary
     set_fact:
       terraform_variables: "{{ service_file_content | ansible.builtin.combine(service_account_dict) }}"
 
-  - name: Basic deploy of a GCP instance and a vpc network
+  - name: Terraform plan of a GCP instance and a vpc network
+    cloud.terraform.terraform:
+      project_path: '{{tmp_directory.path}}/terraform-template-gcp-vm'
+      state: present
+      force_init: true
+      backend_config:
+        credentials: "{{ lookup('ansible.builtin.env', 'GCE_CREDENTIALS_FILE_PATH') }}"
+        bucket: "{{ service_file_content.gcp_project }}-tf-state"
+        prefix: "terraform/state/{{service_file_path}}"
+      variables: "{{ terraform_variables }}"
+    check_mode: true
+    register: terraform_plan
+
+  - name: Show terraform plan output
+    debug:
+      var: terraform_plan.stdout.splitlines()
+
+  - name: Extract resource plan string related to resource added changed destroyed
+    set_fact:
+      plan_string: "{{ terraform_plan.stdout.splitlines() | regex_search('Plan: [0-9]+ to add, [0-9]+ to change, [0-9]+ to destroy.') }}"
+
+  - name: Extract resource added changed destroyed
+    set_fact:
+      plan_resource_destroyed: "{{ plan_string | regex_search('Plan: [0-9]+ to add, [0-9]+ to change, ([0-9]+) to destroy.', '\\1' ) | first }}"
+    when: plan_string is defined and plan_string != ""
+
+  - name: Fail if terraform plan resources to destroy is greater than 0 
+    fail:
+      msg: "The terraform plan would destroy {{ plan_resource_destroyed }} resources. To confirm the execution add \"force_destroy\": \"True\" in service definition yaml file  "
+    when: plan_resource_destroyed is defined and plan_resource_destroyed != "0"
+
+  - name: Terraform apply of a GCP instance and a vpc network
     cloud.terraform.terraform:
       project_path: '{{tmp_directory.path}}/terraform-template-gcp-vm'
       state: present
@@ -53,3 +85,54 @@
         prefix: "terraform/state/{{service_file_path}}"
       variables: "{{ terraform_variables }}"
 
+  - name: Download terraform state file from GCS
+    google.cloud.gcp_storage_object:
+      action: download
+      bucket: "{{ service_file_content.gcp_project }}-tf-state"
+      src: "terraform/state/{{service_file_path}}/default.tfstate"
+      dest: "{{tmp_directory.path}}/{{service_file_path}}_default.tfstate"
+      project: '{{ service_file_content.gcp_project }}'
+      auth_kind: serviceaccount
+      service_account_file: "{{ lookup('ansible.builtin.env', 'GCE_CREDENTIALS_FILE_PATH') }}" 
+
+  - name: List outputs from terraform.tfstate in project_dir
+    cloud.terraform.terraform_output:
+      project_path: '{{tmp_directory.path}}/terraform-template-gcp-vm'
+      state_file: "{{tmp_directory.path}}/{{service_file_path}}_default.tfstate"
+    register: terraform_output
+
+  - name: List outputs from terraform.tfstate in project_dir
+    debug: var=terraform_output
+
+  - name: Add a host to ansible
+    ansible.builtin.add_host:
+      hostname: '{{ item }}'
+      ansible_ssh_host: '{{ terraform_output.outputs.vm_instance_ip_address.value[my_idx] }}'
+      groups: "{{service_file_path}}"
+      ansible_ssh_user: "{{terraform_output.outputs.ssh_username.value}}"
+      ansible_ssh_common_args: "-o StrictHostKeyChecking=accept-new"
+      ansible_private_key_file: "{{ tmp_directory.path }}/ssh_private_key"
+    loop: "{{terraform_output.outputs.vm_instance_name.value}}"
+    loop_control:
+      index_var: my_idx
+
+  - name: Creating the ssh private key file
+    copy:
+      dest: "{{ tmp_directory.path }}/ssh_private_key"
+      content: "{{ terraform_output.outputs.private_key.value }}"
+      mode: 0400
+
+- name: "Example of postconfig"
+  hosts: "{{service_file_path}}" 
+  tasks:
+    - name: Install httpd
+      dnf:
+        name: httpd
+        state: present
+      become: true
+    - name: Start httpd service
+      ansible.builtin.service:
+        name: httpd
+        state: started
+        enabled: yes
+      become: true
